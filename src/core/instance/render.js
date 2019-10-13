@@ -66,6 +66,7 @@ export function renderMixin (Vue: Class<Component>) {
     return nextTick(fn, this)
   }
 
+  // _render渲染函数，最终返回一个VNode节点
   Vue.prototype._render = function (): VNode {
     const vm: Component = this
     const { render, _parentVnode } = vm.$options
@@ -88,6 +89,8 @@ export function renderMixin (Vue: Class<Component>) {
       // separately from one another. Nested component's render fns are called
       // when parent component is patched.
       currentRenderingInstance = vm
+
+      // 在这里调用render方法生成vnode节点，render方法通过编译产生，把 template 编译成 render 方法
       vnode = render.call(vm._renderProxy, vm.$createElement)
     } catch (e) {
       handleError(e, vm, `render`)
@@ -112,6 +115,8 @@ export function renderMixin (Vue: Class<Component>) {
       vnode = vnode[0]
     }
     // return empty vnode in case the render function errored out
+
+    // 如果VNode节点没有创建成功则创建一个空节点
     if (!(vnode instanceof VNode)) {
       if (process.env.NODE_ENV !== 'production' && Array.isArray(vnode)) {
         warn(
@@ -120,7 +125,7 @@ export function renderMixin (Vue: Class<Component>) {
           vm
         )
       }
-      vnode = createEmptyVNode()
+      vnode = createEmptyVNode() // 创建一个空的vnode节点
     }
     // set parent
     vnode.parent = _parentVnode

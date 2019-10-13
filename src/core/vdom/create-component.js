@@ -98,6 +98,7 @@ const componentVNodeHooks = {
 
 const hooksToMerge = Object.keys(componentVNodeHooks)
 
+// 创建一个组件节点，返回vnode节点
 export function createComponent (
   Ctor: Class<Component> | Function | Object | void,
   data: ?VNodeData,
@@ -105,6 +106,8 @@ export function createComponent (
   children: ?Array<VNode>,
   tag?: string
 ): VNode | Array<VNode> | void {
+
+  // 没有传组件构造类直接返回
   if (isUndef(Ctor)) {
     return
   }
@@ -118,6 +121,7 @@ export function createComponent (
 
   // if at this stage it's not a constructor or an async component factory,
   // reject.
+  // 如果Ctor依然不是一个构造函数或者是一个异步组件工厂则直接返回
   if (typeof Ctor !== 'function') {
     if (process.env.NODE_ENV !== 'production') {
       warn(`Invalid Component definition: ${String(Ctor)}`, context)
@@ -126,6 +130,7 @@ export function createComponent (
   }
 
   // async component
+  // 处理异步组件相关逻辑，如果是一个一个异步组件则会不会返回任何东西，直接return
   let asyncFactory
   if (isUndef(Ctor.cid)) {
     asyncFactory = Ctor

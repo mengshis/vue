@@ -64,6 +64,7 @@ export function lifecycleMixin (Vue: Class<Component>) {
     vm._vnode = vnode
     // Vue.prototype.__patch__ is injected in entry points
     // based on the rendering backend used.
+    /*基于后端渲染, Vue.prototype.__patch__被用来作为一个入口*/
     if (!prevVnode) {
       // initial render
       vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */)
@@ -73,6 +74,7 @@ export function lifecycleMixin (Vue: Class<Component>) {
     }
     restoreActiveInstance()
     // update __vue__ reference
+    // 更新新的实例对象的__vue__
     if (prevEl) {
       prevEl.__vue__ = null
     }
@@ -144,6 +146,7 @@ export function mountComponent (
   hydrating?: boolean
 ): Component {
   vm.$el = el
+  // 如果不存在render函数，则直接创建一个空的VNode节点
   if (!vm.$options.render) {
     vm.$options.render = createEmptyVNode
     if (process.env.NODE_ENV !== 'production') {
@@ -164,11 +167,13 @@ export function mountComponent (
       }
     }
   }
+  // 触发beforeMount钩子
   callHook(vm, 'beforeMount')
 
+  // updateComponent会作为参数传递作为Watcher对象的getter函数，在数据改变时用来依赖收集
   let updateComponent
   /* istanbul ignore if */
-  if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
+  if (process.env.NODE_ENV !== 'production' && config.performance && mark) { // 首次渲染视图会进入
     updateComponent = () => {
       const name = vm._name
       const id = vm._uid
@@ -176,27 +181,31 @@ export function mountComponent (
       const endTag = `vue-perf-end:${id}`
 
       mark(startTag)
-      const vnode = vm._render()
+      const vnode = vm._render() // 生成虚拟Node
       mark(endTag)
       measure(`vue ${name} render`, startTag, endTag)
 
       mark(startTag)
-      vm._update(vnode, hydrating)
+      vm._update(vnode, hydrating)  // 更新DOM
       mark(endTag)
       measure(`vue ${name} patch`, startTag, endTag)
     }
   } else {
-    updateComponent = () => {
-      vm._update(vm._render(), hydrating)
+    updateComponent = () => { // 数据更新时会进入
+      vm._update(vm._render(), hydrating) // 更新DOM
     }
   }
 
   // we set this to vm._watcher inside the watcher's constructor
   // since the watcher's initial patch may call $forceUpdate (e.g. inside child
   // component's mounted hook), which relies on vm._watcher being already defined
+
+  // 对该vm注册一个Watcher实例，Watcher的getter是updateComponent函数，用于触发所有渲染所需要用到的数据的getter，
+  // getter中会进行依赖收集，该Watcher实例会存在所有渲染所需数据的闭包Dep。具体点击查看Watcher类中的构造函数
   new Watcher(vm, updateComponent, noop, {
     before () {
       if (vm._isMounted && !vm._isDestroyed) {
+        // 触发beforeUpdate钩子
         callHook(vm, 'beforeUpdate')
       }
     }
@@ -207,6 +216,7 @@ export function mountComponent (
   // mounted is called for render-created child components in its inserted hook
   if (vm.$vnode == null) {
     vm._isMounted = true
+    // 触发mounted钩子
     callHook(vm, 'mounted')
   }
   return vm

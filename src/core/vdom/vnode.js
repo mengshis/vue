@@ -1,14 +1,15 @@
 /* @flow */
 
+// 对真实DOM的一层抽象
 export default class VNode {
-  tag: string | void;
-  data: VNodeData | void;
-  children: ?Array<VNode>;
-  text: string | void;
-  elm: Node | void;
-  ns: string | void;
+  tag: string | void; // 当前节点的标签名
+  data: VNodeData | void; // 当前节点对应的对象
+  children: ?Array<VNode>; // 当前节点的子节点
+  text: string | void; // 当前节点的文本
+  elm: Node | void; // 当前虚拟节点对应的真实dom节点
+  ns: string | void; // 当前节点的名字空间
   context: Component | void; // rendered in this component's scope
-  key: string | number | void;
+  key: string | number | void; // 当前节点的唯一标识
   componentOptions: VNodeComponentOptions | void;
   componentInstance: Component | void; // component instance
   parent: VNode | void; // component placeholder node
@@ -70,14 +71,14 @@ export default class VNode {
     return this.componentInstance
   }
 }
-
+/*创建一个空VNode节点*/
 export const createEmptyVNode = (text: string = '') => {
   const node = new VNode()
   node.text = text
   node.isComment = true
   return node
 }
-
+/*创建一个文本节点*/
 export function createTextVNode (val: string | number) {
   return new VNode(undefined, undefined, undefined, String(val))
 }
@@ -86,6 +87,8 @@ export function createTextVNode (val: string | number) {
 // used for static nodes and slot nodes because they may be reused across
 // multiple renders, cloning them avoids errors when DOM manipulations rely
 // on their elm reference.
+
+/*克隆一个VNode节点*/
 export function cloneVNode (vnode: VNode): VNode {
   const cloned = new VNode(
     vnode.tag,
