@@ -50,6 +50,8 @@ export function initState (vm: Component) {
   const opts = vm.$options
   if (opts.props) initProps(vm, opts.props)
   if (opts.methods) initMethods(vm, opts.methods)
+  // 判断传入Vue构造函数的option中是否有data
+  // 如果有则initData，如果没有，则observe一个空的对象
   if (opts.data) {
     initData(vm)
   } else {
@@ -110,7 +112,12 @@ function initProps (vm: Component, propsOptions: Object) {
 }
 
 function initData (vm: Component) {
+  // 初始化数据,其实一方面把data的内容代理到vm实例上,
+  // 另一方面改造data,变成响应式的
+  // 即get时触发依赖收集(将订阅者加入Dep实例的subs数组中),set时notify订阅者
   let data = vm.$options.data
+  // 在initState之前有一个针对mergeOptions的环节，会统一将data处理成为一个函数（组件中的data也是一个方法）
+  // 而beforeCreated钩子可能对该data进行修改，所以此处会判断是否为funciton
   data = vm._data = typeof data === 'function'
     ? getData(data, vm)
     : data || {}
@@ -128,6 +135,9 @@ function initData (vm: Component) {
   const methods = vm.$options.methods
   let i = keys.length
   while (i--) {
+    // 此处是在判断如果props和methods中出现了与data中同名的属性
+    // 则抛出警告
+    
     const key = keys[i]
     if (process.env.NODE_ENV !== 'production') {
       if (methods && hasOwn(methods, key)) {
@@ -143,7 +153,14 @@ function initData (vm: Component) {
         `Use prop default value instead.`,
         vm
       )
-    } else if (!isReserved(key)) {
+    } else if (!isReserved(key)) {  // 此处会判断key是不是vue中的保留字，例如_和$开头的变量名
+
+      // 将data、props、methods等的属性的内容代理到vm上面去,使得vm访问指定属性即可拿到_data内的同名属性
+      // 实现vm.prop === vm._data.prop,
+      // 这样当前vm的后代实例就能直接通过原型链查找到父代的属性
+      // 比如v-for指令会为数组的每一个元素创建一个scope,这个scope就继承自vm或上级数组元素的scope,
+      // 这样就可以在v-for的作用域中访问父级的数据
+      // ** 此处如果出现了同名key的冲突，那么会有一个优先级：props > methods > data **
       proxy(vm, `_data`, key)
     }
   }
@@ -173,7 +190,9 @@ function initComputed (vm: Component, computed: Object) {
   const isSSR = isServerRendering()
 
   for (const key in computed) {
+    // 用户定义的computed里面的属性（方法）
     const userDef = computed[key]
+    // computed里面属性对应的getter
     const getter = typeof userDef === 'function' ? userDef : userDef.get
     if (process.env.NODE_ENV !== 'production' && getter == null) {
       warn(
@@ -182,6 +201,10 @@ function initComputed (vm: Component, computed: Object) {
       )
     }
 
+    // 将computed里面的属性响应式
+    /**
+     * 此处的watcher和渲染时给data添加的watcher不一样，因为computedWatcherOptions={ lazy: true }
+     */
     if (!isSSR) {
       // create internal watcher for the computed property.
       watchers[key] = new Watcher(
@@ -195,6 +218,7 @@ function initComputed (vm: Component, computed: Object) {
     // component-defined computed properties are already defined on the
     // component prototype. We only need to define computed properties defined
     // at instantiation here.
+    // 判断computed里面的属性名是否已经在data上被使用过
     if (!(key in vm)) {
       defineComputed(vm, key, userDef)
     } else if (process.env.NODE_ENV !== 'production') {
@@ -212,6 +236,7 @@ export function defineComputed (
   key: string,
   userDef: Object | Function
 ) {
+  // 为计算属性添加getter、setter，主要看getter：createComputedGetter
   const shouldCache = !isServerRendering()
   if (typeof userDef === 'function') {
     sharedPropertyDefinition.get = shouldCache
@@ -240,8 +265,10 @@ export function defineComputed (
 
 function createComputedGetter (key) {
   return function computedGetter () {
+    // 将已经实例化好的watcher添加进去
     const watcher = this._computedWatchers && this._computedWatchers[key]
     if (watcher) {
+      // 当dirty为true，也就是该计算属性得到了更新时，才会触发watcher.evaluate
       if (watcher.dirty) {
         watcher.evaluate()
       }
@@ -352,6 +379,7 @@ export function stateMixin (Vue: Class<Component>) {
       return createWatcher(vm, expOrFn, cb, options)
     }
     options = options || {}
+    // option.user = true,
     options.user = true
     const watcher = new Watcher(vm, expOrFn, cb, options)
     if (options.immediate) {
