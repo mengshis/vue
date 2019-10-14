@@ -41,17 +41,46 @@ export class Observer {
 
   constructor (value: any) {
     this.value = value
-    this.dep = new Dep()
+    this.dep = new Dep()        // 订阅器
     this.vmCount = 0
+    // 给value添加__ob__属性，值就是本Observer对象，value.__ob__ = this;
+    // Vue.$data 中每个对象都有 __ob__ 属性,包括 Vue.$data对象本身
+    // def就是defineProperty的封装，定义一个不可枚举属性__ob__，以防止被枚举
+    // 经过def函数后，data会变成如下对象：
+    /**
+     * {
+          a: 1,
+          // __ob__ 是不可枚举的属性
+          __ob__: {
+            value: data, // value 属性指向 data 数据对象本身，这是一个循环引用
+            dep: dep实例对象, // new Dep()
+            vmCount: 0
+          }
+        }
+     */
     def(value, '__ob__', this)
+    // 判断是否为数组，不是的话调用walk()添加getter和setter
+    // 如果是数组，调用observeArray()遍历数组，为数组内每个对象添加getter和setter
     if (Array.isArray(value)) {
       if (hasProto) {
+        /**
+         * 如果该数组属性有原型，则将数组原型方法赋予数组类型的属性
+         */
         protoAugment(value, arrayMethods)
       } else {
+        /**
+         * 如果没有原型，则赋予自身拥有的数组类型的属性
+         */
         copyAugment(value, arrayMethods, arrayKeys)
       }
+      /**
+       * 
+       */
       this.observeArray(value)
     } else {
+      /**
+       * 当值不为数组时，执行walk方法遍历value中的属性，使用Object.defineProperty方法让这些属性变成响应式
+       */
       this.walk(value)
     }
   }
@@ -64,6 +93,7 @@ export class Observer {
   walk (obj: Object) {
     const keys = Object.keys(obj)
     for (let i = 0; i < keys.length; i++) {
+      // 对data对象内的每一个属性进行响应式化
       defineReactive(obj, keys[i])
     }
   }
@@ -112,13 +142,21 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
     return
   }
   let ob: Observer | void
+
+  // __ob__这个属性可以认为是用来判断该属性是否被观察，
+  // 以免重复观察同一个属性
   if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) {
     ob = value.__ob__
   } else if (
+    // shouldObserver
     shouldObserve &&
+    // isServerRendering 只有当不是服务端渲染的时候才会观测数据
     !isServerRendering() &&
+    // 当数据对象是数组或纯对象的时候，才有必要对其进行观测
     (Array.isArray(value) || isPlainObject(value)) &&
+    // 对象必须是可扩展属性的
     Object.isExtensible(value) &&
+    // 避免Vue实例对象被观测
     !value._isVue
   ) {
     ob = new Observer(value)
@@ -143,25 +181,34 @@ export function defineReactive (
 
   const property = Object.getOwnPropertyDescriptor(obj, key)
   if (property && property.configurable === false) {
+    // 当该对象属性描述无法被改变或别删除时直接返回
     return
   }
 
   // cater for pre-defined getter/setters
+  // 获取已经有的getter和setter
   const getter = property && property.get
   const setter = property && property.set
   if ((!getter || setter) && arguments.length === 2) {
     val = obj[key]
   }
 
+  // 如果该属性是一个拥有其他属性的对象，那么对其属性也进行观测（响应式化）
   let childOb = !shallow && observe(val)
+  // 在此处重写get和set方法
+  // 在get中使用depend方法将当前属性添加到当前全局watcher观察者列表中
   Object.defineProperty(obj, key, {
     enumerable: true,
     configurable: true,
     get: function reactiveGetter () {
       const value = getter ? getter.call(obj) : val
+      // Dep.target 全局变量指向的就是当前正在解析指令的Complie生成的 Watcher
+      // 会执行到 dep.addSub(Dep.target), 将 Watcher 添加到 Dep 对象的 Watcher 列表中
       if (Dep.target) {
         dep.depend()
         if (childOb) {
+          // 对其子属性也进行依赖收集
+          // 这样当使用Vue.set给该属性添加新的子属性时，就能够触发依赖
           childOb.dep.depend()
           if (Array.isArray(value)) {
             dependArray(value)
@@ -171,9 +218,11 @@ export function defineReactive (
       return value
     },
     set: function reactiveSetter (newVal) {
+      // 先取得该属性原来的值
       const value = getter ? getter.call(obj) : val
       /* eslint-disable no-self-compare */
       if (newVal === value || (newVal !== newVal && value !== value)) {
+        // 新旧值相等或者新值和旧值为NaN时直接返回不触发更新
         return
       }
       /* eslint-enable no-self-compare */
@@ -182,12 +231,17 @@ export function defineReactive (
       }
       // #7981: for accessor properties without setter
       if (getter && !setter) return
+      // 设置新的属性值
       if (setter) {
         setter.call(obj, newVal)
       } else {
         val = newVal
       }
+      /**
+       * 如果当前属性不是对象，则变成一个响应式对象
+       */
       childOb = !shallow && observe(newVal)
+      // 如果触发set方法，即进行notify通知
       dep.notify()
     }
   })
@@ -197,6 +251,8 @@ export function defineReactive (
  * Set a property on an object. Adds the new property and
  * triggers change notification if the property doesn't
  * already exist.
+ * 由于给响应式对象添加新的属性不会触发setter，直接根据索引设置数组的值和改变数组长度也无法触发setter，所以vue提供了Vue.set方法
+ * 首先将该属性变为响应式，然后notify触发依赖
  */
 export function set (target: Array<any> | Object, key: any, val: any): any {
   if (process.env.NODE_ENV !== 'production' &&

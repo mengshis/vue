@@ -14,8 +14,8 @@ function Vue (options) {
   this._init(options)
 }
 
-initMixin(Vue)
-stateMixin(Vue)
+initMixin(Vue)      // 初始化传入Vue构造函数的options
+stateMixin(Vue)     // 初始化Vue实例上绑定的data
 eventsMixin(Vue)
 lifecycleMixin(Vue)
 renderMixin(Vue)

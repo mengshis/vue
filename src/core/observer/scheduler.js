@@ -81,10 +81,17 @@ function flushSchedulerQueue () {
   //    user watchers are created before the render watcher)
   // 3. If a component is destroyed during a parent component's watcher run,
   //    its watchers can be skipped.
+  /**
+   * 刷新前给queue排序，这样做可以保证：
+    1.组件更新的顺序是从父组件到子组件的顺序，因为父组件总是比子组件先创建。
+    2.一个组件的user watchers比render watcher先运行，因为user watchers往往比render watcher更早创建
+    3.如果一个组件在父组件watcher运行期间被销毁，它的watcher执行将被跳过。
+   */
   queue.sort((a, b) => a.id - b.id)
 
   // do not cache length because more watchers might be pushed
   // as we run existing watchers
+  // 对watcher队列进行遍历
   for (index = 0; index < queue.length; index++) {
     watcher = queue[index]
     if (watcher.before) {
@@ -92,6 +99,7 @@ function flushSchedulerQueue () {
     }
     id = watcher.id
     has[id] = null
+    // 触发setter进行通知
     watcher.run()
     // in dev build, check and stop circular updates.
     if (process.env.NODE_ENV !== 'production' && has[id] != null) {
@@ -114,6 +122,7 @@ function flushSchedulerQueue () {
   const activatedQueue = activatedChildren.slice()
   const updatedQueue = queue.slice()
 
+  // 将watchers队列清空，has map清空，flushing和waiting标识符重置
   resetSchedulerState()
 
   // call component updated and activated hooks
@@ -160,16 +169,23 @@ function callActivatedHooks (queue) {
  * Push a watcher into the watcher queue.
  * Jobs with duplicate IDs will be skipped unless it's
  * pushed when the queue is being flushed.
+ * flushing参数为false表示当前没有进行队列的刷新，id重复的watcher不会被推入，
+ * 相反队列在刷新时，相同id的watcher可以被推入
  */
 export function queueWatcher (watcher: Watcher) {
   const id = watcher.id
+  // has:Map，
+  // 保证每个watcher仅推入一次
   if (has[id] == null) {
     has[id] = true
     if (!flushing) {
+      // flushing：标识符，表示目前队列是否在更新
       queue.push(watcher)
     } else {
       // if already flushing, splice the watcher based on its id
       // if already past its id, it will be run next immediately.
+      // 如果更新了，那么把这个id对应的watcher进行替换
+      // 如果过了这个id，那么就把这个id立即放在队列下一个
       let i = queue.length - 1
       while (i > index && queue[i].id > watcher.id) {
         i--
@@ -177,6 +193,8 @@ export function queueWatcher (watcher: Watcher) {
       queue.splice(i + 1, 0, watcher)
     }
     // queue the flush
+    // waiting参数保证下面的逻辑只调用一次
+    // 在同一个tick可能对数据进行多次更新，视图只关心最后一次的更新结果
     if (!waiting) {
       waiting = true
 

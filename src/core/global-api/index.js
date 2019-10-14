@@ -18,6 +18,10 @@ import {
   defineReactive
 } from '../util/index'
 
+/**
+ * 定义Vue全局的一些全局属性和工具方法
+ * 
+ */
 export function initGlobalAPI (Vue: GlobalAPI) {
   // config
   const configDef = {}
@@ -41,9 +45,9 @@ export function initGlobalAPI (Vue: GlobalAPI) {
     defineReactive
   }
 
-  Vue.set = set
-  Vue.delete = del
-  Vue.nextTick = nextTick
+  Vue.set = set             // 全局的set方法
+  Vue.delete = del          // 全局的del方法
+  Vue.nextTick = nextTick   // 全局的nextTick方法
 
   // 2.6 explicit observable API
   Vue.observable = <T>(obj: T): T => {
@@ -62,8 +66,19 @@ export function initGlobalAPI (Vue: GlobalAPI) {
 
   extend(Vue.options.components, builtInComponents)
 
-  initUse(Vue)
-  initMixin(Vue)
+  initUse(Vue)              // Vue.use方法用来加载工具和对象
+  initMixin(Vue)            // 将
   initExtend(Vue)
   initAssetRegisters(Vue)
 }
+
+/**
+  Vue.config 各种全局配置项
+  Vue.util 各种工具函数，还有一些兼容性的标志位（哇，不用自己判断浏览器了，Vue已经判断好了）
+  Vue.set/delete 这个你文档应该见过
+  Vue.nextTick
+  Vue.options 这个options和我们上面用来构造实例的options不一样。这个是Vue默认提供的资源（组件指令过滤器）。
+  Vue.use 通过initUse方法定义
+  Vue.mixin 通过initMixin方法定义
+  Vue.extend 通过initExtend方法定义
+*/
