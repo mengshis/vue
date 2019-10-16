@@ -28,22 +28,23 @@ const ALWAYS_NORMALIZE = 2
 
 // 创建虚拟vnode，createElement方法对参数进行一定的处理后，会调用_createElement方法来创建vnode
 export function createElement (
-  context: Component,
-  tag: any,
+  context: Component, // vm 实例
+  tag: any, // vnode的tag标签
   data: any,
-  children: any,
+  children: any, // 子节点
   normalizationType: any,
   alwaysNormalize: boolean
 ): VNode | Array<VNode> {
 
   // 兼容不传data的情况
+  // 兼容传递参数顺序
   if (Array.isArray(data) || isPrimitive(data)) {
     normalizationType = children
     children = data
     data = undefined
   }
   if (isTrue(alwaysNormalize)) {
-    normalizationType = ALWAYS_NORMALIZE
+    normalizationType = ALWAYS_NORMALIZE// 2
   }
   return _createElement(context, tag, data, children, normalizationType)
 }
@@ -59,6 +60,7 @@ export function _createElement (
 
   /*如果data未定义（undefined或者null）或者是data的__ob__已经定义（代表已经被observed，上面绑定了Oberver对象），
    那么就创建一个空节点*/
+  // 非响应式数据
   if (isDef(data) && isDef((data: any).__ob__)) {
     process.env.NODE_ENV !== 'production' && warn(
       `Avoid using observed data object as vnode data: ${JSON.stringify(data)}\n` +

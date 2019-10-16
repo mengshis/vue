@@ -1,6 +1,7 @@
 /* @flow */
 
 /**
+ * v-model指令处理
  * Cross-platform code generation for component v-model
  */
 export function genComponentModel (

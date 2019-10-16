@@ -1,5 +1,7 @@
 /* @flow */
-
+/**
+ * 对style属性进行处理
+ */
 import { parseText } from 'compiler/parser/text-parser'
 import { parseStyleText } from 'web/util/style'
 import {

@@ -1,5 +1,7 @@
 /* @flow */
-
+/**
+ * 只对type属性为动态属性的input元素进行处理，做v-if-else的一个转化
+ */
 /**
  * Expand input[v-model] with dyanmic type bindings into v-if-else chains
  * Turn this:

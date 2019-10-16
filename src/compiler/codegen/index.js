@@ -44,14 +44,47 @@ export function generate (
   ast: ASTElement | void,
   options: CompilerOptions
 ): CodegenResult {
+  // 生成code的一些配置参数
   const state = new CodegenState(options)
   const code = ast ? genElement(ast, state) : '_c("div")'
+  ```
+  _c('div', 
+      {
+        on: {
+          "click": function ($event) {
+            changeName()
+          }
+        }
+      }, 
+      [
+        _c('span', [ _v(_s(name)) ]), 
+        _v(" "), 
+        _c('ul', 
+            _l( (like), function (item, index) {
+            return _c('li', 
+              {
+                key: index
+              }, 
+              [
+                _v( _s(item) )
+              ]
+            )
+          })
+        )
+      ]
+    )
+  ```
   return {
-    render: `with(this){return ${code}}`,
-    staticRenderFns: state.staticRenderFns
+    render: `with(this){return ${code}}`, // 函数体的字符串
+    staticRenderFns: state.staticRenderFns // 所有纯静态节点的渲染函数体的字符串组成的数组
   }
 }
 
+/**
+ * 根据ast生成代码
+ * @param {*} el 
+ * @param {*} state 
+ */
 export function genElement (el: ASTElement, state: CodegenState): string {
   if (el.parent) {
     el.pre = el.pre || el.parent.pre
@@ -189,9 +222,9 @@ export function genFor (
   altGen?: Function,
   altHelper?: string
 ): string {
-  const exp = el.for
-  const alias = el.alias
-  const iterator1 = el.iterator1 ? `,${el.iterator1}` : ''
+  const exp = el.for // list
+  const alias = el.alias // obj
+  const iterator1 = el.iterator1 ? `,${el.iterator1}` : '' // ind
   const iterator2 = el.iterator2 ? `,${el.iterator2}` : ''
 
   if (process.env.NODE_ENV !== 'production' &&
@@ -210,6 +243,11 @@ export function genFor (
   }
 
   el.forProcessed = true // avoid recursion
+  /**
+    _l((list), function(objind) { // ???
+      return xxxx
+    })
+   */
   return `${altHelper || '_l'}((${exp}),` +
     `function(${alias}${iterator1}${iterator2}){` +
       `return ${(altGen || genElement)(el, state)}` +
@@ -575,6 +613,9 @@ function genComponent (
   state: CodegenState
 ): string {
   const children = el.inlineTemplate ? null : genChildren(el, state, true)
+  /**
+    _c(componentName, xxx, children);
+   */
   return `_c(${componentName},${genData(el, state)}${
     children ? `,${children}` : ''
   })`

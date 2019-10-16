@@ -4,7 +4,7 @@ import { parse } from 'compiler/parser/index'
 import { generate } from './codegen'
 import { optimize } from './optimizer'
 import { createCompilerCreator } from 'compiler/create-compiler'
-
+// 创建服务端渲染换下的编译器
 export const createCompiler = createCompilerCreator(function baseCompile (
   template: string,
   options: CompilerOptions

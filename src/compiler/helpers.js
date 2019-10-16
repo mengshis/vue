@@ -68,10 +68,10 @@ function prependModifierMarker (symbol: string, name: string, dynamic?: boolean)
 
 export function addHandler (
   el: ASTElement,
-  name: string,
+  name: string, // click
   value: string,
-  modifiers: ?ASTModifiers,
-  important?: boolean,
+  modifiers: ?ASTModifiers, // { capture:true, passive:true }
+  important?: boolean, // 影响事件处理函数顺序
   warn?: ?Function,
   range?: Range,
   dynamic?: boolean
@@ -89,10 +89,11 @@ export function addHandler (
       range
     )
   }
-
+  // https://cn.vuejs.org/v2/guide/events.html#%E4%BA%8B%E4%BB%B6%E4%BF%AE%E9%A5%B0%E7%AC%A6
   // normalize click.right and click.middle since they don't actually fire
   // this is technically browser-specific, but at least for now browsers are
   // the only target envs that have right/middle clicks.
+  // 对right、middle修饰符的处理，事件是click时，相应的做转换：right-click => contextmenu; middle-click => mouseup
   if (modifiers.right) {
     if (dynamic) {
       name = `(${name})==='click'?'contextmenu':(${name})`
@@ -108,7 +109,9 @@ export function addHandler (
     }
   }
 
-  // check capture modifier
+  // check capture modifier 处理capture修饰符
+  // <!-- 添加事件监听器时使用事件捕获模式 -->
+  // <!-- 即内部元素触发的事件先在此处理，然后才交由内部元素进行处理 -->
   if (modifiers.capture) {
     delete modifiers.capture
     name = prependModifierMarker('!', name, dynamic)
@@ -123,6 +126,7 @@ export function addHandler (
     name = prependModifierMarker('&', name, dynamic)
   }
 
+  // name = '&!click'
   let events
   if (modifiers.native) {
     delete modifiers.native
@@ -138,6 +142,7 @@ export function addHandler (
 
   const handlers = events[name]
   /* istanbul ignore if */
+  // 一个事件多个监听函数时的处理
   if (Array.isArray(handlers)) {
     important ? handlers.unshift(newHandler) : handlers.push(newHandler)
   } else if (handlers) {
@@ -158,6 +163,13 @@ export function getRawBindingAttr (
     el.rawAttrsMap[name]
 }
 
+/**
+ * 获取绑定属性（v-bind或者:定义的属性）的值
+ * getStatis不为false（undefined|null也可）时，会在没有绑定属性时返回静态值
+ * @param {*} el 
+ * @param {*} name 属性名称
+ * @param {*} getStatic 
+ */
 export function getBindingAttr (
   el: ASTElement,
   name: string,
@@ -166,11 +178,18 @@ export function getBindingAttr (
   const dynamicValue =
     getAndRemoveAttr(el, ':' + name) ||
     getAndRemoveAttr(el, 'v-bind:' + name)
+  // 是否有绑定属性，（绑定属性值为空字符串时也为true）
   if (dynamicValue != null) {
+    // parseFilter 解析过滤器：用来将绑定的值分为两部分，一部分称之为表达式，另外一部分则是过滤器函数，然后将这两部分结合在一起
+    // <div :key="id | featId"></div>
+    // "_f("featId")(id)"
+    // _f 函数: 来自于 src/core/instance/render-helpers/resolve-filter.js 文件，
+    // 这个函数的作用就是接收一个过滤器的名字作为参数，然后找到相应的过滤器函数，
     return parseFilters(dynamicValue)
   } else if (getStatic !== false) {
     const staticValue = getAndRemoveAttr(el, name)
     if (staticValue != null) {
+      //JSON.stringify: 保证对于非绑定的属性来讲，总是会将该属性的值作为字符串处理
       return JSON.stringify(staticValue)
     }
   }
@@ -180,6 +199,19 @@ export function getBindingAttr (
 // doesn't get processed by processAttrs.
 // By default it does NOT remove it from the map (attrsMap) because the map is
 // needed during codegen.
+/**
+ * 从ast模板对象中取出相应的属性。
+ * 1. 检测属性是否存在，通过对象attrsMap来检测，提升效率
+ * 2. 如果存在，则从attrsList中中移除
+ * 3. 如果第三个传参为true，删除attrsMap中对应的属性
+ * 4. 返回取到的结果，或者undefined
+ * 
+ * attrsList: 属性列表
+ * attrsMap: 属性映射表
+ * @param {*} el 
+ * @param {*} name 
+ * @param {*} removeFromMap 
+ */
 export function getAndRemoveAttr (
   el: ASTElement,
   name: string,

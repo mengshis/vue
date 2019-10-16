@@ -1,5 +1,7 @@
 /* @flow */
-
+/**
+ * class属性处理
+ */
 import { parseText } from 'compiler/parser/text-parser'
 import {
   getAndRemoveAttr,
@@ -7,10 +9,14 @@ import {
   baseWarn
 } from 'compiler/helpers'
 
+/**
+ * 处理元素节点中staticClass,classBinding值
+ */
 function transformNode (el: ASTElement, options: CompilerOptions) {
   const warn = options.warn || baseWarn
   const staticClass = getAndRemoveAttr(el, 'class')
   if (process.env.NODE_ENV !== 'production' && staticClass) {
+    //如果静态class中含有delimiters界定符（默认是{{}} ），会报出警告
     const res = parseText(staticClass, options.delimiters)
     if (res) {
       warn(
@@ -22,9 +28,11 @@ function transformNode (el: ASTElement, options: CompilerOptions) {
       )
     }
   }
+  // 获取静态class
   if (staticClass) {
     el.staticClass = JSON.stringify(staticClass)
   }
+  // 获取动态绑定class
   const classBinding = getBindingAttr(el, 'class', false /* getStatic */)
   if (classBinding) {
     el.classBinding = classBinding
